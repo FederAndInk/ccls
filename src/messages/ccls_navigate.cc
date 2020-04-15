@@ -15,7 +15,7 @@ REFLECT_STRUCT(Param, textDocument, position, direction);
 
 Maybe<Range> findParent(QueryFile *file, Pos pos) {
   Maybe<Range> parent;
-  for (auto [sym, refcnt] : file->symbol2refcnt)
+  for (auto [sym, refcnt] : file->getSymbols())
     if (refcnt > 0 && sym.extent.valid() && sym.extent.start <= pos &&
         pos < sym.extent.end &&
         (!parent || (parent->start == sym.extent.start
@@ -44,7 +44,7 @@ void MessageHandler::ccls_navigate(JsonReader &reader, ReplyOnce &reply) {
   switch (param.direction[0]) {
   case 'D': {
     Maybe<Range> parent = findParent(file, pos);
-    for (auto [sym, refcnt] : file->symbol2refcnt)
+    for (auto [sym, refcnt] : file->getSymbols())
       if (refcnt > 0 && pos < sym.extent.start &&
           (!parent || sym.extent.end <= parent->end) &&
           (!res || sym.extent.start < res->start))
@@ -52,7 +52,7 @@ void MessageHandler::ccls_navigate(JsonReader &reader, ReplyOnce &reply) {
     break;
   }
   case 'L':
-    for (auto [sym, refcnt] : file->symbol2refcnt)
+    for (auto [sym, refcnt] : file->getSymbols())
       if (refcnt > 0 && sym.extent.valid() && sym.extent.end <= pos &&
           (!res || (res->end == sym.extent.end ? sym.extent.start < res->start
                                                : res->end < sym.extent.end)))
@@ -65,7 +65,7 @@ void MessageHandler::ccls_navigate(JsonReader &reader, ReplyOnce &reply) {
       if (pos.column)
         pos.column--;
     }
-    for (auto [sym, refcnt] : file->symbol2refcnt)
+    for (auto [sym, refcnt] : file->getSymbols())
       if (refcnt > 0 && sym.extent.valid() && pos < sym.extent.start &&
           (!res ||
            (sym.extent.start == res->start ? res->end < sym.extent.end
@@ -75,7 +75,7 @@ void MessageHandler::ccls_navigate(JsonReader &reader, ReplyOnce &reply) {
   }
   case 'U':
   default:
-    for (auto [sym, refcnt] : file->symbol2refcnt)
+    for (auto [sym, refcnt] : file->getSymbols())
       if (refcnt > 0 && sym.extent.valid() && sym.extent.start < pos &&
           pos < sym.extent.end && (!res || res->start < sym.extent.start))
         res = sym.extent;

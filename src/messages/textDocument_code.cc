@@ -104,7 +104,7 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
   };
 
   std::unordered_set<Range> seen;
-  for (auto [sym, refcnt] : file->symbol2refcnt) {
+  for (auto [sym, refcnt] : file->getSymbols()) {
     if (refcnt <= 0 || !sym.extent.valid() || !seen.insert(sym.range).second)
       continue;
     switch (sym.kind) {

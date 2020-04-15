@@ -25,7 +25,7 @@ void MessageHandler::textDocument_foldingRange(TextDocumentParam &param,
   std::vector<FoldingRange> result;
   std::optional<lsRange> ls_range;
 
-  for (auto [sym, refcnt] : file->symbol2refcnt)
+  for (auto [sym, refcnt] : file->getSymbols())
     if (refcnt > 0 && sym.extent.valid() &&
         (sym.kind == Kind::Func || sym.kind == Kind::Type) &&
         (ls_range = getLsRange(wf, sym.extent))) {

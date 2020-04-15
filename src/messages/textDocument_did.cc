@@ -37,6 +37,7 @@ void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
   if (file) {
     emitSkippedRanges(wf, *file);
     emitSemanticHighlight(db, wf, *file);
+    emitInlineParameterHint(db, wf, *file);
   }
   include_complete->addFile(wf->filename);
 

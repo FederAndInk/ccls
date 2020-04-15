@@ -91,7 +91,7 @@ bool expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
       for (Use use : func.uses) {
         const QueryFile &file1 = m->db->files[use.file_id];
         Maybe<ExtentRef> best;
-        for (auto [sym, refcnt] : file1.symbol2refcnt)
+        for (auto [sym, refcnt] : file1.getSymbols())
           if (refcnt > 0 && sym.extent.valid() && sym.kind == Kind::Func &&
               sym.extent.start <= use.range.start &&
               use.range.end <= sym.extent.end &&

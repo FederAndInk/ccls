@@ -287,7 +287,7 @@ void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
 
   // Group symbols together.
   std::unordered_map<SymbolIdx, CclsSemanticHighlightSymbol> grouped_symbols;
-  for (auto [sym, refcnt] : file.symbol2refcnt) {
+  for (auto [sym, refcnt] : file.getSymbols()) {
     if (refcnt <= 0)
       continue;
     std::string_view detailed_name;

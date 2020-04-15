@@ -40,7 +40,7 @@ void MessageHandler::textDocument_documentHighlight(
   std::vector<DocumentHighlight> result;
   std::vector<SymbolRef> syms =
       findSymbolsAtLocation(wf, file, param.position, true);
-  for (auto [sym, refcnt] : file->symbol2refcnt) {
+  for (auto [sym, refcnt] : file->getSymbols()) {
     if (refcnt <= 0)
       continue;
     Usr usr = sym.usr;
@@ -154,7 +154,7 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
 
   if (param.startLine >= 0) {
     std::vector<lsRange> result;
-    for (auto [sym, refcnt] : file->symbol2refcnt) {
+    for (auto [sym, refcnt] : file->getSymbols()) {
       if (refcnt <= 0 || !allows(sym) ||
           !(param.startLine <= sym.range.start.line &&
             sym.range.start.line <= param.endLine))
@@ -168,7 +168,7 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
     std::unordered_map<SymbolIdx, std::unique_ptr<DocumentSymbol>> sym2ds;
     std::vector<std::pair<std::vector<const void *>, DocumentSymbol *>> funcs,
         types;
-    for (auto [sym, refcnt] : file->symbol2refcnt) {
+    for (auto [sym, refcnt] : file->getSymbols()) {
       if (refcnt <= 0 || !sym.extent.valid())
         continue;
       auto r = sym2ds.try_emplace(SymbolIdx{sym.usr, sym.kind});
@@ -250,7 +250,7 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
     reply(result);
   } else {
     std::vector<SymbolInformation> result;
-    for (auto [sym, refcnt] : file->symbol2refcnt) {
+    for (auto [sym, refcnt] : file->getSymbols()) {
       if (refcnt <= 0 || !allows(sym))
         continue;
       if (std::optional<SymbolInformation> info =

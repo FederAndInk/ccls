@@ -274,22 +274,14 @@ void DB::applyIndexUpdate(IndexUpdate *u) {
     use.file_id =
         use.file_id == -1 ? u->file_id : lid2fid.find(use.file_id)->second;
     ExtentRef sym{{use.range, usr, kind, use.role}};
-    int &v = files[use.file_id].symbol2refcnt[sym];
-    v += delta;
-    assert(v >= 0);
-    if (!v)
-      files[use.file_id].symbol2refcnt.erase(sym);
+    files[use.file_id].updateSymbolRefCount(sym, delta);
   };
   auto refDecl = [&](std::unordered_map<int, int> &lid2fid, Usr usr, Kind kind,
                      DeclRef &dr, int delta) {
     dr.file_id =
         dr.file_id == -1 ? u->file_id : lid2fid.find(dr.file_id)->second;
     ExtentRef sym{{dr.range, usr, kind, dr.role}, dr.extent};
-    int &v = files[dr.file_id].symbol2refcnt[sym];
-    v += delta;
-    assert(v >= 0);
-    if (!v)
-      files[dr.file_id].symbol2refcnt.erase(sym);
+    files[dr.file_id].updateSymbolRefCount(sym, delta);
   };
 
   auto updateUses =
@@ -424,9 +416,10 @@ void DB::update(const Lid2file_id &lid2file_id, int file_id,
     u.second.file_id = file_id;
     if (def.spell) {
       assignFileId(lid2file_id, file_id, *def.spell);
-      files[def.spell->file_id].symbol2refcnt[{
-          {def.spell->range, u.first, Kind::Func, def.spell->role},
-          def.spell->extent}]++;
+      files[def.spell->file_id].updateSymbolRefCount(
+          {{def.spell->range, u.first, Kind::Func, def.spell->role},
+           def.spell->extent},
+          1);
     }
 
     auto r = func_usr.try_emplace({u.first}, func_usr.size());
@@ -447,9 +440,10 @@ void DB::update(const Lid2file_id &lid2file_id, int file_id,
     u.second.file_id = file_id;
     if (def.spell) {
       assignFileId(lid2file_id, file_id, *def.spell);
-      files[def.spell->file_id].symbol2refcnt[{
-          {def.spell->range, u.first, Kind::Type, def.spell->role},
-          def.spell->extent}]++;
+      files[def.spell->file_id].updateSymbolRefCount(
+          {{def.spell->range, u.first, Kind::Type, def.spell->role},
+           def.spell->extent},
+          1);
     }
     auto r = type_usr.try_emplace({u.first}, type_usr.size());
     if (r.second)
@@ -469,9 +463,9 @@ void DB::update(const Lid2file_id &lid2file_id, int file_id,
     u.second.file_id = file_id;
     if (def.spell) {
       assignFileId(lid2file_id, file_id, *def.spell);
-      files[def.spell->file_id].symbol2refcnt[{
+      files[def.spell->file_id].updateSymbolRefCount({
           {def.spell->range, u.first, Kind::Var, def.spell->role},
-          def.spell->extent}]++;
+          def.spell->extent}, 1);
     }
     auto r = var_usr.try_emplace({u.first}, var_usr.size());
     if (r.second)
@@ -796,7 +790,7 @@ std::vector<SymbolRef> findSymbolsAtLocation(WorkingFile *wfile,
     }
   }
 
-  for (auto [sym, refcnt] : file->symbol2refcnt)
+  for (auto [sym, refcnt] : file->getSymbols())
     if (refcnt > 0 && sym.range.contains(ls_pos.line, ls_pos.character))
       symbols.push_back(sym);
 
