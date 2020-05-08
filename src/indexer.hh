@@ -32,6 +32,20 @@ using Usr = uint64_t;
 enum class Kind : uint8_t { Invalid, File, Type, Func, Var };
 REFLECT_UNDERLYING_B(Kind);
 
+template <template <typename T> class V> struct TypeDef;
+template <template <typename T> class V> struct FuncDef;
+struct VarDef;
+
+template <template <typename T> class V>
+constexpr Kind kindOf(FuncDef<V> const &) noexcept {
+  return Kind::Func;
+}
+template <template <typename T> class V>
+constexpr Kind kindOf(TypeDef<V> const &) noexcept {
+  return Kind::Type;
+}
+constexpr Kind kindOf(VarDef const &) noexcept { return Kind::Var; }
+
 enum class Role : uint16_t {
   None = 0,
   Declaration = 1 << 0,
@@ -85,6 +99,12 @@ struct ExtentRef : SymbolRef {
     return std::make_tuple(range, usr, kind, role, extent);
   }
   bool operator==(const ExtentRef &o) const { return toTuple() == o.toTuple(); }
+
+  template <typename Def>
+  static ExtentRef fromDef(Def const &def, Usr usr) noexcept {
+    return {{def.spell->range, usr, kindOf(def), def.spell->role},
+            def.spell->extent};
+  }
 };
 
 struct Ref {
@@ -239,6 +259,7 @@ struct VarDef : NameMixin<VarDef> {
   // Note a variable may have instances of both |None| and |Extern|
   // (declaration).
   uint8_t storage = clang::SC_None;
+  bool is_non_const_lvalue_ref = false;
 
   bool is_local() const {
     return spell &&
@@ -255,7 +276,7 @@ struct VarDef : NameMixin<VarDef> {
 };
 REFLECT_STRUCT(VarDef, detailed_name, hover, comments, spell, type,
                qual_name_offset, short_name_offset, short_name_size, kind,
-               parent_kind, storage);
+               parent_kind, storage, is_non_const_lvalue_ref);
 
 struct IndexVar {
   using Def = VarDef;
@@ -271,6 +292,18 @@ struct IndexInclude {
   int line = 0;
   // Absolute path to the index.
   const char *resolved_path;
+};
+
+struct Call {
+  /// function usr
+  Usr usr;
+
+  struct Param {
+    Pos pos;
+    bool is_literal = false;
+  };
+
+  std::vector<Param> params;
 };
 
 struct IndexFile {
@@ -308,6 +341,7 @@ struct IndexFile {
   std::unordered_map<Usr, IndexFunc> usr2func;
   std::unordered_map<Usr, IndexType> usr2type;
   std::unordered_map<Usr, IndexVar> usr2var;
+  std::unordered_map<Pos, Call> calls;
 
   // File contents at the time of index. Not serialized.
   std::string file_contents;

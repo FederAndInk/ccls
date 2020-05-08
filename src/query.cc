@@ -417,9 +417,7 @@ void DB::update(const Lid2file_id &lid2file_id, int file_id,
     if (def.spell) {
       assignFileId(lid2file_id, file_id, *def.spell);
       files[def.spell->file_id].updateSymbolRefCount(
-          {{def.spell->range, u.first, Kind::Func, def.spell->role},
-           def.spell->extent},
-          1);
+          ExtentRef::fromDef(def, u.first), 1);
     }
 
     auto r = func_usr.try_emplace({u.first}, func_usr.size());
@@ -441,9 +439,7 @@ void DB::update(const Lid2file_id &lid2file_id, int file_id,
     if (def.spell) {
       assignFileId(lid2file_id, file_id, *def.spell);
       files[def.spell->file_id].updateSymbolRefCount(
-          {{def.spell->range, u.first, Kind::Type, def.spell->role},
-           def.spell->extent},
-          1);
+          ExtentRef::fromDef(def, u.first), 1);
     }
     auto r = type_usr.try_emplace({u.first}, type_usr.size());
     if (r.second)
@@ -463,9 +459,8 @@ void DB::update(const Lid2file_id &lid2file_id, int file_id,
     u.second.file_id = file_id;
     if (def.spell) {
       assignFileId(lid2file_id, file_id, *def.spell);
-      files[def.spell->file_id].updateSymbolRefCount({
-          {def.spell->range, u.first, Kind::Var, def.spell->role},
-          def.spell->extent}, 1);
+      files[def.spell->file_id].updateSymbolRefCount(
+          ExtentRef::fromDef(def, u.first), 1);
     }
     auto r = var_usr.try_emplace({u.first}, var_usr.size());
     if (r.second)

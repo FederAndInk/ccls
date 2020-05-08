@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <llvm/ADT/iterator_range.h>
+
 #include <optional>
 #include <string_view>
 
@@ -152,4 +154,25 @@ template <typename T> struct Vec {
   const T &operator[](size_t i) const { return a.get()[i]; }
   T &operator[](size_t i) { return a.get()[i]; }
 };
+
+/**
+ * @brief create a view of elements of rng[n..] or [] if size of rng <= n
+ *
+ * @tparam Range
+ * @param n
+ * @param rng
+ * @return auto
+ */
+template <typename Range> auto drop(std::size_t n, Range const &rng) {
+  auto begin = rng.begin();
+  auto end = rng.end();
+  while (n > 0 && begin != end) {
+    ++begin;
+    --n;
+  }
+  return llvm::make_range(begin, end);
+}
+
+template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 } // namespace ccls

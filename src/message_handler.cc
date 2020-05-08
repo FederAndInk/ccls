@@ -466,4 +466,32 @@ void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
       params.symbols.push_back(std::move(entry.second));
   pipeline::notify("$ccls/publishSemanticHighlight", params);
 }
+
+void emitInlineParameterHint(DB *db, WorkingFile *wfile, QueryFile &file) {
+  auto sz = file.def->args.size();
+  sz = file.getSymbols().size();
+  for (auto &pair : file.getSymbols()) {
+    ExtentRef const &sym{pair.first};
+    if (sym.kind == Kind::Func && (sym.role & Role::Call)) {
+      auto name = db->getSymbolName(sym, false);
+      auto qual_name = db->getSymbolName(sym, true);
+
+      auto &fct = db->getFunc(sym);
+      auto fct_def = fct.anyDef();
+      auto &param = fct_def->vars;
+      auto &spell = *fct_def->spell;
+      if (param.size() > 0) {
+        auto p1 = db->getVar(param[0]);
+        auto p1_name = p1.anyDef()->name(false);
+        auto p1_qual_name = p1.anyDef()->name(true);
+        auto jk{0};
+      }
+      auto buf_line = wfile->buffer_lines[sym.range.start.line];
+      auto index_line = wfile->index_lines[sym.range.start.line];
+      auto i{0};
+    }
+  }
+  return;
+}
+
 } // namespace ccls

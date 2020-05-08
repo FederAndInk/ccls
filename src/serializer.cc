@@ -348,6 +348,7 @@ template <typename TVisitor> void reflect1(TVisitor &vis, IndexVar &v) {
   REFLECT_MEMBER2("kind", v.def.kind);
   REFLECT_MEMBER2("parent_kind", v.def.parent_kind);
   REFLECT_MEMBER2("storage", v.def.storage);
+  REFLECT_MEMBER2("is_non_const_lvalue_ref", v.def.is_non_const_lvalue_ref);
 
   REFLECT_MEMBER2("declarations", v.declarations);
   REFLECT_MEMBER2("uses", v.uses);

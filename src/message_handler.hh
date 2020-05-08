@@ -295,4 +295,6 @@ private:
 void emitSkippedRanges(WorkingFile *wfile, QueryFile &file);
 
 void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file);
+
+void emitInlineParameterHint(DB *db, WorkingFile *wfile, QueryFile &file);
 } // namespace ccls

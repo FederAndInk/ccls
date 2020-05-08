@@ -480,6 +480,7 @@ void main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
         continue;
       QueryFile &file = db->files[db->name2file_id[path]];
       emitSemanticHighlight(db, wf.get(), file);
+      emitInlineParameterHint(db, wf.get(), file);
     }
     return;
   }
@@ -497,6 +498,7 @@ void main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
       QueryFile &file = db->files[update->file_id];
       emitSkippedRanges(wfile, file);
       emitSemanticHighlight(db, wfile, file);
+      emitInlineParameterHint(db, wfile, file);
     }
   }
 }

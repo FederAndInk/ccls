@@ -25,6 +25,7 @@
 #include <inttypes.h>
 #include <map>
 #include <unordered_set>
+#include <variant>
 
 using namespace clang;
 
@@ -403,10 +404,157 @@ bool validateRecord(const RecordDecl *rd) {
   return true;
 }
 
+/**
+ * @brief common class for CallExpr and ConstructExpr
+ *
+ * There is no base class for all calls so here is a variant wrapped in a class
+ */
+class CallOrConstructExpr {
+  using CallExprVariant =
+      std::variant<std::monostate, CallExpr const *, CXXConstructExpr const *>;
+
+  CallExprVariant expr;
+
+public:
+  using const_arg_range = CallExpr::const_arg_range;
+
+  CallOrConstructExpr() = default;
+
+  /*explicit(false)*/ CallOrConstructExpr(CallExprVariant expr)
+      : expr(expr) {}
+
+  /*explicit(false)*/ CallOrConstructExpr(Expr const *exp) {
+    if (auto call_expr = dyn_cast<CallExpr>(exp)) {
+      expr = call_expr;
+    } else if (auto cxx_construct_expr = dyn_cast<CXXConstructExpr>(exp)) {
+      expr = cxx_construct_expr;
+    }
+  }
+
+  /*explicit(false)*/ CallOrConstructExpr(
+      ast_type_traits::DynTypedNode const &node) {
+    if (auto call_expr = node.get<CallExpr>()) {
+      expr = call_expr;
+    } else if (auto cxx_construct_expr = node.get<CXXConstructExpr>()) {
+      expr = cxx_construct_expr;
+    }
+  }
+
+  bool isValid() const noexcept {
+    return !std::holds_alternative<std::monostate>(expr);
+  }
+
+  operator bool() const noexcept { return isValid(); }
+
+  template <typename... Fct> decltype(auto) visit(Fct &&... fct) {
+    return std::visit(
+        overloaded{[](std::monostate) {}, std::forward<Fct>(fct)...}, expr);
+  }
+  template <typename... Fct> decltype(auto) visit(Fct &&... fct) const {
+    return std::visit(
+        overloaded{[](std::monostate) {}, std::forward<Fct>(fct)...}, expr);
+  }
+  template <typename T, typename... Fct> decltype(auto) visit(Fct &&... fct) {
+    return std::visit(
+        overloaded{[](std::monostate) -> T {
+                     LOG_S(FATAL)
+                         << "Monostate is there just for the return type";
+                     throw std::logic_error("Monostate isn't handled");
+                   },
+                   std::forward<Fct>(fct)...},
+        expr);
+  }
+  template <typename T, typename... Fct>
+  decltype(auto) visit(Fct &&... fct) const {
+    return std::visit(
+        overloaded{[](std::monostate) -> T {
+                     LOG_S(FATAL)
+                         << "Monostate is there just for the return type";
+                     throw std::logic_error("Monostate isn't handled");
+                   },
+                   std::forward<Fct>(fct)...},
+        expr);
+  }
+
+  Stmt::StmtClass getStmtClass() const noexcept {
+    return visit<Stmt::StmtClass>(
+        [](auto const *exp) { return exp->getStmtClass(); });
+  }
+
+  const_arg_range arguments() const noexcept {
+    return visit<const_arg_range>(
+        [](auto const *exp) { return exp->arguments(); });
+  }
+};
+
+bool isMemberFunctionCall(CallOrConstructExpr const &expr) noexcept {
+  auto stmt_class = expr.getStmtClass();
+  return stmt_class == Stmt::CXXMemberCallExprClass ||
+         stmt_class == Stmt::CXXOperatorCallExprClass;
+}
+
+bool isCall(Expr const *expr) noexcept {
+  return CallExpr::classof(expr) || CXXConstructExpr::classof(expr);
+}
+
 class IndexDataConsumer : public index::IndexDataConsumer {
 public:
   ASTContext *ctx;
   IndexParam &param;
+
+  template <typename T>
+  std::optional<ast_type_traits::DynTypedNode>
+  getParent(T const &t) const noexcept {
+    auto parents = ctx->getParents(t);
+    if (!parents.empty()) {
+      return std::move(parents[0]);
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  // clang-format off
+  /**
+   * @brief retrieve the first parent that is a `CallExpr` from expr
+   * ```
+   * 1. CallExpr 0x55bc1e2a9490 <line:21:3, col:6> 'int'
+   * 2. |-ImplicitCastExpr 0x55bc1e2a9478 <col:3> 'int (*)(int &)'<FunctionToPointerDecay>
+   * 3. | `-DeclRefExpr 0x55bc1e2a9428 <col:3> 'int (int &)' lvalue Function 0x55bc1e2a8a20 'f' 'int (int &)'
+   * 4. `-DeclRefExpr 0x55bc1e2a9408 <col:5> 'int' lvalue Var 0x55bc1e2a9310 'i' 'int'
+   * ```
+   *
+   * given the DeclRefExpr (3) it will return the CallExpr in 1
+   *
+   * @param expr
+   * @return CallExpr const*
+   */
+  // clang-format on
+  CallOrConstructExpr getParentCallExpr(Expr const *expr) const noexcept {
+    using namespace ast_type_traits;
+    if (expr && !isCall(expr)) {
+      auto node = getParent(*expr);
+      CallOrConstructExpr ret;
+      while (node && !(ret = *node)) {
+        node = getParent(*node);
+      }
+      return ret;
+    } else {
+      return expr;
+    }
+  }
+
+  /**
+   * @brief tells if the first token of expr is a literal
+   *
+   * @param expr
+   * @return true if expr is a literal
+   */
+  bool isLiteral(Expr const *expr) const noexcept {
+    Token p_tok;
+    Lexer::getRawToken(expr->getBeginLoc(), p_tok, ctx->getSourceManager(),
+                       ctx->getLangOpts());
+    return p_tok.isLiteral();
+  }
 
   std::string getComment(const Decl *d) {
     SourceManager &sm = ctx->getSourceManager();
@@ -687,7 +835,7 @@ public:
   IndexDataConsumer(IndexParam &param) : param(param) {}
   void initialize(ASTContext &ctx) override { this->ctx = param.ctx = &ctx; }
 #if LLVM_VERSION_MAJOR < 10 // llvmorg-10-init-12036-g3b9715cb219
-# define handleDeclOccurrence handleDeclOccurence
+#define handleDeclOccurrence handleDeclOccurence
 #endif
   bool handleDeclOccurrence(const Decl *d, index::SymbolRoleSet roles,
                             ArrayRef<index::SymbolRelation> relations,
@@ -828,6 +976,21 @@ public:
         if (getKind(dc, ls_kind) == Kind::Func)
           db->toFunc(getUsr(dc))
               .def.callees.push_back({loc, usr, Kind::Func, role});
+        Expr const *expr = ast_node.OrigE;
+        if (expr) {
+          if (auto call_exp = getParentCallExpr(expr)) {
+            Call &call = db->calls[loc.start];
+            call.usr = usr;
+            for (Expr const *call_exp_param :
+                 drop(isMemberFunctionCall(call_exp), call_exp.arguments())) {
+              Call::Param &call_param = call.params.emplace_back();
+              auto p_loc = call_exp_param->getBeginLoc();
+              call_param.pos.line = sm.getExpansionLineNumber(p_loc) - 1;
+              call_param.pos.column = sm.getExpansionColumnNumber(p_loc) - 1;
+              call_param.is_literal = isLiteral(call_exp_param);
+            }
+          }
+        }
       }
       break;
     case Kind::Type:
@@ -869,6 +1032,12 @@ public:
         else if (kind == Kind::Type && !isa<RecordDecl>(sem_dc))
           db->toType(getUsr(dc)).def.vars.emplace_back(usr, -1);
         if (!t.isNull()) {
+          auto canonical_type = t.getCanonicalType();
+          if (canonical_type->isLValueReferenceType()) {
+            auto pointee_type =
+                cast<LValueReferenceType>(*canonical_type).getPointeeType();
+            var->def.is_non_const_lvalue_ref = pointee_type.isConstQualified();
+          }
           if (auto *bt = t->getAs<BuiltinType>()) {
             Usr usr1 = static_cast<Usr>(bt->getKind());
             var->def.type = usr1;
@@ -885,10 +1054,10 @@ public:
                 Usr usr1 = getUsr(d1, &info1);
                 IndexType &type1 = db->toType(usr1);
                 SourceLocation sl1 = d1->getLocation();
-                type1.def.spell = {
-                    Use{{fromTokenRange(sm, lang, {sl1, sl1}), Role::Definition},
-                        lid},
-                    fromTokenRange(sm, lang, sr1)};
+                type1.def.spell = {Use{{fromTokenRange(sm, lang, {sl1, sl1}),
+                                        Role::Definition},
+                                       lid},
+                                   fromTokenRange(sm, lang, sr1)};
                 type1.def.detailed_name = intern(info1->short_name);
                 type1.def.short_name_size = int16_t(info1->short_name.size());
                 type1.def.kind = SymbolKind::TypeParameter;
