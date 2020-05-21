@@ -16,7 +16,7 @@ struct Pos {
   static Pos fromString(const std::string &encoded);
 
   bool valid() const { return column >= 0; }
-  std::string toString();
+  std::string toString() const;
 
   // Compare two Positions and check if they are equal. Ignores the value of
   // |interesting|.
@@ -40,7 +40,7 @@ struct Range {
   bool valid() const { return start.valid(); }
   bool contains(int line, int column) const;
 
-  std::string toString();
+  std::string toString() const;
 
   bool operator==(const Range &o) const {
     return start == o.start && end == o.end;
@@ -58,12 +58,12 @@ struct BinaryWriter;
 
 void reflect(JsonReader &visitor, Pos &value);
 void reflect(JsonReader &visitor, Range &value);
-void reflect(JsonWriter &visitor, Pos &value);
-void reflect(JsonWriter &visitor, Range &value);
+void reflect(JsonWriter &visitor, Pos const &value);
+void reflect(JsonWriter &visitor, Range const &value);
 void reflect(BinaryReader &visitor, Pos &value);
 void reflect(BinaryReader &visitor, Range &value);
-void reflect(BinaryWriter &visitor, Pos &value);
-void reflect(BinaryWriter &visitor, Range &value);
+void reflect(BinaryWriter &visitor, Pos const &value);
+void reflect(BinaryWriter &visitor, Range const &value);
 } // namespace ccls
 
 namespace std {

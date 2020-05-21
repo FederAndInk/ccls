@@ -114,10 +114,10 @@ struct DocumentSymbol {
   lsRange selectionRange;
   std::vector<std::unique_ptr<DocumentSymbol>> children;
 };
-void reflect(JsonWriter &vis, std::unique_ptr<DocumentSymbol> &v);
+void reflect(JsonWriter &vis, std::unique_ptr<DocumentSymbol> const &v);
 REFLECT_STRUCT(DocumentSymbol, name, detail, kind, range, selectionRange,
                children);
-void reflect(JsonWriter &vis, std::unique_ptr<DocumentSymbol> &v) {
+void reflect(JsonWriter &vis, std::unique_ptr<DocumentSymbol> const &v) {
   reflect(vis, *v);
 }
 

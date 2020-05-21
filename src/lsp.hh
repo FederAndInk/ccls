@@ -25,7 +25,7 @@ struct RequestId {
   bool valid() const { return type != kNone; }
 };
 void reflect(JsonReader &visitor, RequestId &value);
-void reflect(JsonWriter &visitor, RequestId &value);
+void reflect(JsonWriter &visitor, RequestId const &value);
 
 struct InMessage {
   RequestId id;

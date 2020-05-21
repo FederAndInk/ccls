@@ -1596,21 +1596,21 @@ void reflect(JsonReader &vis, DeclRef &v) {
   v.file_id = static_cast<int>(strtol(s + 1, &s, 10));
 }
 
-void reflect(JsonWriter &vis, SymbolRef &v) {
+void reflect(JsonWriter &vis, SymbolRef const &v) {
   char buf[99];
   snprintf(buf, sizeof buf, "%s|%" PRIu64 "|%d|%d", v.range.toString().c_str(),
            v.usr, int(v.kind), int(v.role));
   std::string s(buf);
   reflect(vis, s);
 }
-void reflect(JsonWriter &vis, Use &v) {
+void reflect(JsonWriter &vis, Use const &v) {
   char buf[99];
   snprintf(buf, sizeof buf, "%s|%d|%d", v.range.toString().c_str(), int(v.role),
            v.file_id);
   std::string s(buf);
   reflect(vis, s);
 }
-void reflect(JsonWriter &vis, DeclRef &v) {
+void reflect(JsonWriter &vis, DeclRef const &v) {
   char buf[99];
   snprintf(buf, sizeof buf, "%s|%s|%d|%d", v.range.toString().c_str(),
            v.extent.toString().c_str(), int(v.role), v.file_id);
@@ -1634,19 +1634,19 @@ void reflect(BinaryReader &vis, DeclRef &v) {
   reflect(vis, v.extent);
 }
 
-void reflect(BinaryWriter &vis, SymbolRef &v) {
+void reflect(BinaryWriter &vis, SymbolRef const &v) {
   reflect(vis, v.range);
   reflect(vis, v.usr);
   reflect(vis, v.kind);
   reflect(vis, v.role);
 }
-void reflect(BinaryWriter &vis, Use &v) {
+void reflect(BinaryWriter &vis, Use const &v) {
   reflect(vis, v.range);
   reflect(vis, v.role);
   reflect(vis, v.file_id);
 }
-void reflect(BinaryWriter &vis, DeclRef &v) {
-  reflect(vis, static_cast<Use &>(v));
+void reflect(BinaryWriter &vis, DeclRef const &v) {
+  reflect(vis, static_cast<Use const &>(v));
   reflect(vis, v.extent);
 }
 } // namespace ccls

@@ -24,7 +24,7 @@ using namespace llvm;
 REFLECT_UNDERLYING(InsertTextFormat);
 REFLECT_UNDERLYING(CompletionItemKind);
 
-void reflect(JsonWriter &vis, CompletionItem &v) {
+void reflect(JsonWriter &vis, CompletionItem const &v) {
   reflectMemberStart(vis);
   REFLECT_MEMBER(label);
   REFLECT_MEMBER(kind);

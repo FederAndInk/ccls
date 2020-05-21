@@ -23,7 +23,7 @@ Pos Pos::fromString(const std::string &encoded) {
   return {line, column};
 }
 
-std::string Pos::toString() {
+std::string Pos::toString() const {
   char buf[99];
   snprintf(buf, sizeof buf, "%d:%d", line + 1, column + 1);
   return buf;
@@ -53,7 +53,7 @@ bool Range::contains(int line, int column) const {
   return !(p < start) && p < end;
 }
 
-std::string Range::toString() {
+std::string Range::toString() const {
   char buf[99];
   snprintf(buf, sizeof buf, "%d:%d-%d:%d", start.line + 1, start.column + 1,
            end.line + 1, end.column + 1);
@@ -65,11 +65,11 @@ void reflect(JsonReader &vis, Range &v) {
   v = Range::fromString(vis.getString());
 }
 
-void reflect(JsonWriter &vis, Pos &v) {
+void reflect(JsonWriter &vis, Pos const &v) {
   std::string output = v.toString();
   vis.string(output.c_str(), output.size());
 }
-void reflect(JsonWriter &vis, Range &v) {
+void reflect(JsonWriter &vis, Range const &v) {
   std::string output = v.toString();
   vis.string(output.c_str(), output.size());
 }
@@ -85,11 +85,11 @@ void reflect(BinaryReader &visitor, Range &value) {
   reflect(visitor, value.end.column);
 }
 
-void reflect(BinaryWriter &vis, Pos &v) {
+void reflect(BinaryWriter &vis, Pos const &v) {
   reflect(vis, v.line);
   reflect(vis, v.column);
 }
-void reflect(BinaryWriter &vis, Range &v) {
+void reflect(BinaryWriter &vis, Range const &v) {
   reflect(vis, v.start.line);
   reflect(vis, v.start.column);
   reflect(vis, v.end.line);

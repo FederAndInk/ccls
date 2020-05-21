@@ -130,6 +130,19 @@ struct BinaryWriter {
   }
 };
 
+template <typename Vis, typename T> struct ConstIfWriter { using type = T; };
+
+template <typename T> struct ConstIfWriter<JsonWriter, T> {
+  using type = T const;
+};
+
+template <typename T> struct ConstIfWriter<BinaryWriter, T> {
+  using type = T const;
+};
+
+template <typename Vis, typename T>
+using ConstIfWriter_t = typename ConstIfWriter<Vis, T>::type;
+
 struct IndexFile;
 
 #define REFLECT_MEMBER(name) reflectMember(vis, #name, v.name)
@@ -141,7 +154,7 @@ struct IndexFile;
     ::ccls::reflect(vis, v0);                                                  \
     v = static_cast<T>(v0);                                                    \
   }                                                                            \
-  LLVM_ATTRIBUTE_UNUSED inline void reflect(JsonWriter &vis, T &v) {           \
+  LLVM_ATTRIBUTE_UNUSED inline void reflect(JsonWriter &vis, T const &v) {     \
     auto v0 = static_cast<std::underlying_type_t<T>>(v);                       \
     ::ccls::reflect(vis, v0);                                                  \
   }
@@ -153,7 +166,7 @@ struct IndexFile;
     ::ccls::reflect(vis, v0);                                                  \
     v = static_cast<T>(v0);                                                    \
   }                                                                            \
-  LLVM_ATTRIBUTE_UNUSED inline void reflect(BinaryWriter &vis, T &v) {         \
+  LLVM_ATTRIBUTE_UNUSED inline void reflect(BinaryWriter &vis, T const &v) {   \
     auto v0 = static_cast<std::underlying_type_t<T>>(v);                       \
     ::ccls::reflect(vis, v0);                                                  \
   }
@@ -161,7 +174,8 @@ struct IndexFile;
 #define _MAPPABLE_REFLECT_MEMBER(name) REFLECT_MEMBER(name);
 
 #define REFLECT_STRUCT(type, ...)                                              \
-  template <typename Vis> void reflect(Vis &vis, type &v) {                    \
+  template <typename Vis>                                                      \
+  void reflect(Vis &vis, ConstIfWriter_t<Vis, type> &v) {                      \
     reflectMemberStart(vis);                                                   \
     MACRO_MAP(_MAPPABLE_REFLECT_MEMBER, __VA_ARGS__)                           \
     reflectMemberEnd(vis);                                                     \
@@ -183,19 +197,19 @@ void reflect(JsonReader &vis, double &v);
 void reflect(JsonReader &vis, const char *&v);
 void reflect(JsonReader &vis, std::string &v);
 
-void reflect(JsonWriter &vis, bool &v);
-void reflect(JsonWriter &vis, unsigned char &v);
-void reflect(JsonWriter &vis, short &v);
-void reflect(JsonWriter &vis, unsigned short &v);
-void reflect(JsonWriter &vis, int &v);
-void reflect(JsonWriter &vis, unsigned &v);
-void reflect(JsonWriter &vis, long &v);
-void reflect(JsonWriter &vis, unsigned long &v);
-void reflect(JsonWriter &vis, long long &v);
-void reflect(JsonWriter &vis, unsigned long long &v);
-void reflect(JsonWriter &vis, double &v);
-void reflect(JsonWriter &vis, const char *&v);
-void reflect(JsonWriter &vis, std::string &v);
+void reflect(JsonWriter &vis, bool v);
+void reflect(JsonWriter &vis, unsigned char v);
+void reflect(JsonWriter &vis, short v);
+void reflect(JsonWriter &vis, unsigned short v);
+void reflect(JsonWriter &vis, int v);
+void reflect(JsonWriter &vis, unsigned v);
+void reflect(JsonWriter &vis, long v);
+void reflect(JsonWriter &vis, unsigned long v);
+void reflect(JsonWriter &vis, long long v);
+void reflect(JsonWriter &vis, unsigned long long v);
+void reflect(JsonWriter &vis, double v);
+void reflect(JsonWriter &vis, const char *v);
+void reflect(JsonWriter &vis, std::string const &v);
 
 void reflect(BinaryReader &vis, bool &v);
 void reflect(BinaryReader &vis, unsigned char &v);
@@ -211,27 +225,27 @@ void reflect(BinaryReader &vis, double &v);
 void reflect(BinaryReader &vis, const char *&v);
 void reflect(BinaryReader &vis, std::string &v);
 
-void reflect(BinaryWriter &vis, bool &v);
-void reflect(BinaryWriter &vis, unsigned char &v);
-void reflect(BinaryWriter &vis, short &v);
-void reflect(BinaryWriter &vis, unsigned short &v);
-void reflect(BinaryWriter &vis, int &v);
-void reflect(BinaryWriter &vis, unsigned &v);
-void reflect(BinaryWriter &vis, long &v);
-void reflect(BinaryWriter &vis, unsigned long &v);
-void reflect(BinaryWriter &vis, long long &v);
-void reflect(BinaryWriter &vis, unsigned long long &v);
-void reflect(BinaryWriter &vis, double &v);
-void reflect(BinaryWriter &vis, const char *&v);
-void reflect(BinaryWriter &vis, std::string &v);
+void reflect(BinaryWriter &vis, bool v);
+void reflect(BinaryWriter &vis, unsigned char v);
+void reflect(BinaryWriter &vis, short v);
+void reflect(BinaryWriter &vis, unsigned short v);
+void reflect(BinaryWriter &vis, int v);
+void reflect(BinaryWriter &vis, unsigned v);
+void reflect(BinaryWriter &vis, long v);
+void reflect(BinaryWriter &vis, unsigned long v);
+void reflect(BinaryWriter &vis, long long v);
+void reflect(BinaryWriter &vis, unsigned long long v);
+void reflect(BinaryWriter &vis, double v);
+void reflect(BinaryWriter &vis, const char *v);
+void reflect(BinaryWriter &vis, std::string const &v);
 
 void reflect(JsonReader &vis, JsonNull &v);
-void reflect(JsonWriter &vis, JsonNull &v);
+void reflect(JsonWriter &vis, JsonNull v);
 
 void reflect(JsonReader &vis, SerializeFormat &v);
-void reflect(JsonWriter &vis, SerializeFormat &v);
+void reflect(JsonWriter &vis, SerializeFormat v);
 
-void reflect(JsonWriter &vis, std::string_view &v);
+void reflect(JsonWriter &vis, std::string_view v);
 
 //// Type constructors
 
@@ -245,7 +259,7 @@ template <typename T> void reflect(JsonReader &vis, std::optional<T> &v) {
     reflect(vis, *v);
   }
 }
-template <typename T> void reflect(JsonWriter &vis, std::optional<T> &v) {
+template <typename T> void reflect(JsonWriter &vis, std::optional<T> const &v) {
   if (v)
     reflect(vis, *v);
   else
@@ -257,7 +271,8 @@ template <typename T> void reflect(BinaryReader &vis, std::optional<T> &v) {
     reflect(vis, *v);
   }
 }
-template <typename T> void reflect(BinaryWriter &vis, std::optional<T> &v) {
+template <typename T>
+void reflect(BinaryWriter &vis, std::optional<T> const &v) {
   if (v) {
     vis.pack<unsigned char>(1);
     reflect(vis, *v);
@@ -271,7 +286,7 @@ template <typename T> void reflect(JsonReader &vis, Maybe<T> &v) {
   if (!vis.isNull())
     reflect(vis, *v);
 }
-template <typename T> void reflect(JsonWriter &vis, Maybe<T> &v) {
+template <typename T> void reflect(JsonWriter &vis, Maybe<T> const &v) {
   if (v)
     reflect(vis, *v);
   else
@@ -281,7 +296,7 @@ template <typename T> void reflect(BinaryReader &vis, Maybe<T> &v) {
   if (*vis.p_++)
     reflect(vis, *v);
 }
-template <typename T> void reflect(BinaryWriter &vis, Maybe<T> &v) {
+template <typename T> void reflect(BinaryWriter &vis, Maybe<T> const &v) {
   if (v) {
     vis.pack<unsigned char>(1);
     reflect(vis, *v);
@@ -291,7 +306,8 @@ template <typename T> void reflect(BinaryWriter &vis, Maybe<T> &v) {
 }
 
 template <typename T>
-void reflectMember(JsonWriter &vis, const char *name, std::optional<T> &v) {
+void reflectMember(JsonWriter &vis, const char *name,
+                   std::optional<T> const &v) {
   // For TypeScript std::optional property key?: value in the spec,
   // We omit both key and value if value is std::nullopt (null) for JsonWriter
   // to reduce output. But keep it for other serialization formats.
@@ -301,20 +317,20 @@ void reflectMember(JsonWriter &vis, const char *name, std::optional<T> &v) {
   }
 }
 template <typename T>
-void reflectMember(BinaryWriter &vis, const char *, std::optional<T> &v) {
+void reflectMember(BinaryWriter &vis, const char *, std::optional<T> const &v) {
   reflect(vis, v);
 }
 
 // The same as std::optional
 template <typename T>
-void reflectMember(JsonWriter &vis, const char *name, Maybe<T> &v) {
+void reflectMember(JsonWriter &vis, const char *name, Maybe<T> const &v) {
   if (v.valid()) {
     vis.key(name);
     reflect(vis, v);
   }
 }
 template <typename T>
-void reflectMember(BinaryWriter &vis, const char *, Maybe<T> &v) {
+void reflectMember(BinaryWriter &vis, const char *, Maybe<T> const &v) {
   reflect(vis, v);
 }
 
@@ -324,7 +340,7 @@ void reflect(JsonReader &vis, std::pair<L, R> &v) {
   vis.member("R", [&]() { reflect(vis, v.second); });
 }
 template <typename L, typename R>
-void reflect(JsonWriter &vis, std::pair<L, R> &v) {
+void reflect(JsonWriter &vis, std::pair<L, R> const &v) {
   vis.startObject();
   reflectMember(vis, "L", v.first);
   reflectMember(vis, "R", v.second);
@@ -336,7 +352,7 @@ void reflect(BinaryReader &vis, std::pair<L, R> &v) {
   reflect(vis, v.second);
 }
 template <typename L, typename R>
-void reflect(BinaryWriter &vis, std::pair<L, R> &v) {
+void reflect(BinaryWriter &vis, std::pair<L, R> const &v) {
   reflect(vis, v.first);
   reflect(vis, v.second);
 }
@@ -348,7 +364,7 @@ template <typename T> void reflect(JsonReader &vis, std::vector<T> &v) {
     reflect(vis, v.back());
   });
 }
-template <typename T> void reflect(JsonWriter &vis, std::vector<T> &v) {
+template <typename T> void reflect(JsonWriter &vis, std::vector<T> const &v) {
   vis.startArray();
   for (auto &it : v)
     reflect(vis, it);
@@ -360,7 +376,7 @@ template <typename T> void reflect(BinaryReader &vis, std::vector<T> &v) {
     reflect(vis, v.back());
   }
 }
-template <typename T> void reflect(BinaryWriter &vis, std::vector<T> &v) {
+template <typename T> void reflect(BinaryWriter &vis, std::vector<T> const &v) {
   vis.varUInt(v.size());
   for (auto &it : v)
     reflect(vis, it);
@@ -380,7 +396,7 @@ void reflectMember(JsonReader &vis, const char *name, T &v) {
   vis.member(name, [&]() { reflect(vis, v); });
 }
 template <typename T>
-void reflectMember(JsonWriter &vis, const char *name, T &v) {
+void reflectMember(JsonWriter &vis, const char *name, T const &v) {
   vis.key(name);
   reflect(vis, v);
 }
@@ -389,7 +405,7 @@ void reflectMember(BinaryReader &vis, const char *, T &v) {
   reflect(vis, v);
 }
 template <typename T>
-void reflectMember(BinaryWriter &vis, const char *, T &v) {
+void reflectMember(BinaryWriter &vis, const char *, T const &v) {
   reflect(vis, v);
 }
 

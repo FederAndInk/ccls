@@ -27,7 +27,7 @@ void reflect(JsonReader &vis, RequestId &v) {
   }
 }
 
-void reflect(JsonWriter &visitor, RequestId &value) {
+void reflect(JsonWriter &visitor, RequestId const &value) {
   switch (value.type) {
   case RequestId::kNone:
     visitor.null_();

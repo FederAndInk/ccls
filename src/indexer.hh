@@ -137,15 +137,15 @@ struct DeclRef : Use {
 void reflect(JsonReader &visitor, SymbolRef &value);
 void reflect(JsonReader &visitor, Use &value);
 void reflect(JsonReader &visitor, DeclRef &value);
-void reflect(JsonWriter &visitor, SymbolRef &value);
-void reflect(JsonWriter &visitor, Use &value);
-void reflect(JsonWriter &visitor, DeclRef &value);
+void reflect(JsonWriter &visitor, SymbolRef const &value);
+void reflect(JsonWriter &visitor, Use const &value);
+void reflect(JsonWriter &visitor, DeclRef const &value);
 void reflect(BinaryReader &visitor, SymbolRef &value);
 void reflect(BinaryReader &visitor, Use &value);
 void reflect(BinaryReader &visitor, DeclRef &value);
-void reflect(BinaryWriter &visitor, SymbolRef &value);
-void reflect(BinaryWriter &visitor, Use &value);
-void reflect(BinaryWriter &visitor, DeclRef &value);
+void reflect(BinaryWriter &visitor, SymbolRef const &value);
+void reflect(BinaryWriter &visitor, Use const &value);
+void reflect(BinaryWriter &visitor, DeclRef const &value);
 
 template <typename T> using VectorAdapter = std::vector<T, std::allocator<T>>;
 

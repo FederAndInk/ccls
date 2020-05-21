@@ -166,14 +166,14 @@ REFLECT_STRUCT(WorkspaceFolder, uri, name);
 inline void reflect(JsonReader &vis, DocumentUri &v) {
   reflect(vis, v.raw_uri);
 }
-inline void reflect(JsonWriter &vis, DocumentUri &v) {
+inline void reflect(JsonWriter &vis, DocumentUri const &v) {
   reflect(vis, v.raw_uri);
 }
 inline void reflect(JsonReader &vis, VersionedTextDocumentIdentifier &v) {
   REFLECT_MEMBER(uri);
   REFLECT_MEMBER(version);
 }
-inline void reflect(JsonWriter &vis, VersionedTextDocumentIdentifier &v) {
+inline void reflect(JsonWriter &vis, VersionedTextDocumentIdentifier const &v) {
   vis.startObject();
   REFLECT_MEMBER(uri);
   vis.key("version");

@@ -7,6 +7,7 @@
 #include "indexer.hh"
 #include "log.hh"
 #include "message_handler.hh"
+#include "position.hh"
 
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
@@ -90,19 +91,19 @@ void reflect(JsonReader &vis, double &v            ) { if (!vis.m->IsDouble()) t
 void reflect(JsonReader &vis, const char *&v       ) { if (!vis.m->IsString()) throw std::invalid_argument("string");             v = intern(vis.getString()); }
 void reflect(JsonReader &vis, std::string &v       ) { if (!vis.m->IsString()) throw std::invalid_argument("string");             v = vis.getString(); }
 
-void reflect(JsonWriter &vis, bool &v              ) { vis.m->Bool(v); }
-void reflect(JsonWriter &vis, unsigned char &v     ) { vis.m->Int(v); }
-void reflect(JsonWriter &vis, short &v             ) { vis.m->Int(v); }
-void reflect(JsonWriter &vis, unsigned short &v    ) { vis.m->Int(v); }
-void reflect(JsonWriter &vis, int &v               ) { vis.m->Int(v); }
-void reflect(JsonWriter &vis, unsigned &v          ) { vis.m->Uint64(v); }
-void reflect(JsonWriter &vis, long &v              ) { vis.m->Int64(v); }
-void reflect(JsonWriter &vis, unsigned long &v     ) { vis.m->Uint64(v); }
-void reflect(JsonWriter &vis, long long &v         ) { vis.m->Int64(v); }
-void reflect(JsonWriter &vis, unsigned long long &v) { vis.m->Uint64(v); }
-void reflect(JsonWriter &vis, double &v            ) { vis.m->Double(v); }
-void reflect(JsonWriter &vis, const char *&v       ) { vis.string(v); }
-void reflect(JsonWriter &vis, std::string &v       ) { vis.string(v.c_str(), v.size()); }
+void reflect(JsonWriter &vis, bool v              ) { vis.m->Bool(v); }
+void reflect(JsonWriter &vis, unsigned char v     ) { vis.m->Int(v); }
+void reflect(JsonWriter &vis, short v             ) { vis.m->Int(v); }
+void reflect(JsonWriter &vis, unsigned short v    ) { vis.m->Int(v); }
+void reflect(JsonWriter &vis, int v               ) { vis.m->Int(v); }
+void reflect(JsonWriter &vis, unsigned v          ) { vis.m->Uint64(v); }
+void reflect(JsonWriter &vis, long v              ) { vis.m->Int64(v); }
+void reflect(JsonWriter &vis, unsigned long v     ) { vis.m->Uint64(v); }
+void reflect(JsonWriter &vis, long long v         ) { vis.m->Int64(v); }
+void reflect(JsonWriter &vis, unsigned long long v) { vis.m->Uint64(v); }
+void reflect(JsonWriter &vis, double v            ) { vis.m->Double(v); }
+void reflect(JsonWriter &vis, const char *v       ) { vis.string(v); }
+void reflect(JsonWriter &vis, std::string const&v       ) { vis.string(v.c_str(), v.size()); }
 
 void reflect(BinaryReader &vis, bool &v              ) { v = vis.get<bool>(); }
 void reflect(BinaryReader &vis, unsigned char &v     ) { v = vis.get<unsigned char>(); }
@@ -118,22 +119,22 @@ void reflect(BinaryReader &vis, double &v            ) { v = vis.get<double>(); 
 void reflect(BinaryReader &vis, const char *&v       ) { v = intern(vis.getString()); }
 void reflect(BinaryReader &vis, std::string &v       ) { v = vis.getString(); }
 
-void reflect(BinaryWriter &vis, bool &v              ) { vis.pack(v); }
-void reflect(BinaryWriter &vis, unsigned char &v     ) { vis.pack(v); }
-void reflect(BinaryWriter &vis, short &v             ) { vis.varInt(v); }
-void reflect(BinaryWriter &vis, unsigned short &v    ) { vis.varUInt(v); }
-void reflect(BinaryWriter &vis, int &v               ) { vis.varInt(v); }
-void reflect(BinaryWriter &vis, unsigned &v          ) { vis.varUInt(v); }
-void reflect(BinaryWriter &vis, long &v              ) { vis.varInt(v); }
-void reflect(BinaryWriter &vis, unsigned long &v     ) { vis.varUInt(v); }
-void reflect(BinaryWriter &vis, long long &v         ) { vis.varInt(v); }
-void reflect(BinaryWriter &vis, unsigned long long &v) { vis.varUInt(v); }
-void reflect(BinaryWriter &vis, double &v            ) { vis.pack(v); }
-void reflect(BinaryWriter &vis, const char *&v       ) { vis.string(v); }
-void reflect(BinaryWriter &vis, std::string &v       ) { vis.string(v.c_str(), v.size()); }
+void reflect(BinaryWriter &vis, bool v              ) { vis.pack(v); }
+void reflect(BinaryWriter &vis, unsigned char v     ) { vis.pack(v); }
+void reflect(BinaryWriter &vis, short v             ) { vis.varInt(v); }
+void reflect(BinaryWriter &vis, unsigned short v    ) { vis.varUInt(v); }
+void reflect(BinaryWriter &vis, int v               ) { vis.varInt(v); }
+void reflect(BinaryWriter &vis, unsigned v          ) { vis.varUInt(v); }
+void reflect(BinaryWriter &vis, long v              ) { vis.varInt(v); }
+void reflect(BinaryWriter &vis, unsigned long v     ) { vis.varUInt(v); }
+void reflect(BinaryWriter &vis, long long v         ) { vis.varInt(v); }
+void reflect(BinaryWriter &vis, unsigned long long v) { vis.varUInt(v); }
+void reflect(BinaryWriter &vis, double v            ) { vis.pack(v); }
+void reflect(BinaryWriter &vis, const char *v       ) { vis.string(v); }
+void reflect(BinaryWriter &vis, std::string const&v       ) { vis.string(v.c_str(), v.size()); }
 // clang-format on
 
-void reflect(JsonWriter &vis, std::string_view &data) {
+void reflect(JsonWriter &vis, std::string_view data) {
   if (data.empty())
     vis.string("");
   else
@@ -141,7 +142,7 @@ void reflect(JsonWriter &vis, std::string_view &data) {
 }
 
 void reflect(JsonReader &vis, JsonNull &v) {}
-void reflect(JsonWriter &vis, JsonNull &v) { vis.m->Null(); }
+void reflect(JsonWriter &vis, JsonNull v) { vis.m->Null(); }
 
 template <typename V>
 void reflect(JsonReader &vis, std::unordered_map<Usr, V> &v) {
@@ -152,7 +153,7 @@ void reflect(JsonReader &vis, std::unordered_map<Usr, V> &v) {
   });
 }
 template <typename V>
-void reflect(JsonWriter &vis, std::unordered_map<Usr, V> &v) {
+void reflect(JsonWriter &vis, std::unordered_map<Usr, V> const &v) {
   // Determinism
   std::vector<std::pair<uint64_t, V>> xs(v.begin(), v.end());
   std::sort(xs.begin(), xs.end(),
@@ -171,7 +172,7 @@ void reflect(BinaryReader &vis, std::unordered_map<Usr, V> &v) {
   }
 }
 template <typename V>
-void reflect(BinaryWriter &vis, std::unordered_map<Usr, V> &v) {
+void reflect(BinaryWriter &vis, std::unordered_map<Usr, V> const &v) {
   vis.varUInt(v.size());
   for (auto &it : v)
     reflect(vis, it.second);
@@ -183,7 +184,7 @@ void reflect(JsonReader &vis, DenseMap<CachedHashStringRef, int64_t> &v) {
   for (auto it = vis.m->MemberBegin(); it != vis.m->MemberEnd(); ++it)
     v[internH(it->name.GetString())] = it->value.GetInt64();
 }
-void reflect(JsonWriter &vis, DenseMap<CachedHashStringRef, int64_t> &v) {
+void reflect(JsonWriter &vis, DenseMap<CachedHashStringRef, int64_t> const &v) {
   vis.startObject();
   for (auto &it : v) {
     vis.m->Key(it.first.val().data()); // llvm 8 -> data()
@@ -198,7 +199,8 @@ void reflect(BinaryReader &vis, DenseMap<CachedHashStringRef, int64_t> &v) {
     reflect(vis, v[internH(name)]);
   }
 }
-void reflect(BinaryWriter &vis, DenseMap<CachedHashStringRef, int64_t> &v) {
+void reflect(BinaryWriter &vis,
+             DenseMap<CachedHashStringRef, int64_t> const &v) {
   std::string key;
   vis.varUInt(v.size());
   for (auto &it : v) {
@@ -208,13 +210,14 @@ void reflect(BinaryWriter &vis, DenseMap<CachedHashStringRef, int64_t> &v) {
   }
 }
 
-template <typename Vis> void reflect(Vis &vis, IndexInclude &v) {
+template <typename Vis>
+void reflect(Vis &vis, ConstIfWriter_t<Vis, IndexInclude> &v) {
   reflectMemberStart(vis);
   REFLECT_MEMBER(line);
   REFLECT_MEMBER(resolved_path);
   reflectMemberEnd(vis);
 }
-void reflect(JsonWriter &vis, IndexInclude &v) {
+void reflect(JsonWriter &vis, IndexInclude const &v) {
   reflectMemberStart(vis);
   REFLECT_MEMBER(line);
   if (gTestOutputMode) {
@@ -234,7 +237,7 @@ void reflectHoverAndComments(JsonReader &vis, Def &def) {
   reflectMember(vis, "comments", def.comments);
 }
 template <typename Def>
-void reflectHoverAndComments(JsonWriter &vis, Def &def) {
+void reflectHoverAndComments(JsonWriter &vis, Def const &def) {
   // Don't emit empty hover and comments in JSON test mode.
   if (!gTestOutputMode || def.hover[0])
     reflectMember(vis, "hover", def.hover);
@@ -247,7 +250,7 @@ void reflectHoverAndComments(BinaryReader &vis, Def &def) {
   reflect(vis, def.comments);
 }
 template <typename Def>
-void reflectHoverAndComments(BinaryWriter &vis, Def &def) {
+void reflectHoverAndComments(BinaryWriter &vis, Def const &def) {
   reflect(vis, def.hover);
   reflect(vis, def.comments);
 }
@@ -265,7 +268,7 @@ template <typename Def> void reflectShortName(JsonReader &vis, Def &def) {
     reflectMember(vis, "short_name_size", def.short_name_size);
   }
 }
-template <typename Def> void reflectShortName(JsonWriter &vis, Def &def) {
+template <typename Def> void reflectShortName(JsonWriter &vis, Def const &def) {
   if (gTestOutputMode) {
     std::string_view short_name(def.detailed_name + def.short_name_offset,
                                 def.short_name_size);
@@ -279,12 +282,14 @@ template <typename Def> void reflectShortName(BinaryReader &vis, Def &def) {
   reflect(vis, def.short_name_offset);
   reflect(vis, def.short_name_size);
 }
-template <typename Def> void reflectShortName(BinaryWriter &vis, Def &def) {
+template <typename Def>
+void reflectShortName(BinaryWriter &vis, Def const &def) {
   reflect(vis, def.short_name_offset);
   reflect(vis, def.short_name_size);
 }
 
-template <typename TVisitor> void reflect1(TVisitor &vis, IndexFunc &v) {
+template <typename TVisitor>
+void reflect1(TVisitor &vis, ConstIfWriter_t<TVisitor, IndexFunc> &v) {
   reflectMemberStart(vis);
   REFLECT_MEMBER2("usr", v.usr);
   REFLECT_MEMBER2("detailed_name", v.def.detailed_name);
@@ -305,11 +310,12 @@ template <typename TVisitor> void reflect1(TVisitor &vis, IndexFunc &v) {
   reflectMemberEnd(vis);
 }
 void reflect(JsonReader &vis, IndexFunc &v) { reflect1(vis, v); }
-void reflect(JsonWriter &vis, IndexFunc &v) { reflect1(vis, v); }
+void reflect(JsonWriter &vis, IndexFunc const &v) { reflect1(vis, v); }
 void reflect(BinaryReader &vis, IndexFunc &v) { reflect1(vis, v); }
-void reflect(BinaryWriter &vis, IndexFunc &v) { reflect1(vis, v); }
+void reflect(BinaryWriter &vis, IndexFunc const &v) { reflect1(vis, v); }
 
-template <typename Vis> void reflect1(Vis &vis, IndexType &v) {
+template <typename Vis>
+void reflect1(Vis &vis, ConstIfWriter_t<Vis, IndexType> &v) {
   reflectMemberStart(vis);
   REFLECT_MEMBER2("usr", v.usr);
   REFLECT_MEMBER2("detailed_name", v.def.detailed_name);
@@ -332,11 +338,12 @@ template <typename Vis> void reflect1(Vis &vis, IndexType &v) {
   reflectMemberEnd(vis);
 }
 void reflect(JsonReader &vis, IndexType &v) { reflect1(vis, v); }
-void reflect(JsonWriter &vis, IndexType &v) { reflect1(vis, v); }
+void reflect(JsonWriter &vis, IndexType const &v) { reflect1(vis, v); }
 void reflect(BinaryReader &vis, IndexType &v) { reflect1(vis, v); }
-void reflect(BinaryWriter &vis, IndexType &v) { reflect1(vis, v); }
+void reflect(BinaryWriter &vis, IndexType const &v) { reflect1(vis, v); }
 
-template <typename TVisitor> void reflect1(TVisitor &vis, IndexVar &v) {
+template <typename TVisitor>
+void reflect1(TVisitor &vis, ConstIfWriter_t<TVisitor, IndexVar> &v) {
   reflectMemberStart(vis);
   REFLECT_MEMBER2("usr", v.usr);
   REFLECT_MEMBER2("detailed_name", v.def.detailed_name);
@@ -355,12 +362,13 @@ template <typename TVisitor> void reflect1(TVisitor &vis, IndexVar &v) {
   reflectMemberEnd(vis);
 }
 void reflect(JsonReader &vis, IndexVar &v) { reflect1(vis, v); }
-void reflect(JsonWriter &vis, IndexVar &v) { reflect1(vis, v); }
+void reflect(JsonWriter &vis, IndexVar const &v) { reflect1(vis, v); }
 void reflect(BinaryReader &vis, IndexVar &v) { reflect1(vis, v); }
-void reflect(BinaryWriter &vis, IndexVar &v) { reflect1(vis, v); }
+void reflect(BinaryWriter &vis, IndexVar const &v) { reflect1(vis, v); }
 
 // IndexFile
-template <typename TVisitor> void reflect1(TVisitor &vis, IndexFile &v) {
+template <typename TVisitor>
+void reflect1(TVisitor &vis, ConstIfWriter_t<TVisitor, IndexFile> &v) {
   reflectMemberStart(vis);
   if (!gTestOutputMode) {
     REFLECT_MEMBER(mtime);
@@ -379,16 +387,16 @@ template <typename TVisitor> void reflect1(TVisitor &vis, IndexFile &v) {
   reflectMemberEnd(vis);
 }
 void reflectFile(JsonReader &vis, IndexFile &v) { reflect1(vis, v); }
-void reflectFile(JsonWriter &vis, IndexFile &v) { reflect1(vis, v); }
+void reflectFile(JsonWriter &vis, IndexFile const &v) { reflect1(vis, v); }
 void reflectFile(BinaryReader &vis, IndexFile &v) { reflect1(vis, v); }
-void reflectFile(BinaryWriter &vis, IndexFile &v) { reflect1(vis, v); }
+void reflectFile(BinaryWriter &vis, IndexFile const &v) { reflect1(vis, v); }
 
 void reflect(JsonReader &vis, SerializeFormat &v) {
   v = vis.getString()[0] == 'j' ? SerializeFormat::Json
                                 : SerializeFormat::Binary;
 }
 
-void reflect(JsonWriter &vis, SerializeFormat &v) {
+void reflect(JsonWriter &vis, SerializeFormat v) {
   switch (v) {
   case SerializeFormat::Binary:
     vis.string("binary");
