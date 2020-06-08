@@ -177,6 +177,8 @@ IndexUpdate IndexUpdate::createDelta(IndexFile *previous, IndexFile *current) {
     r.vars_uses[var.usr].second = std::move(var.uses);
   }
 
+  r.calls = std::move(current->calls);
+
   r.files_def_update = buildFileDefUpdate(std::move(*current));
   return r;
 }
@@ -389,6 +391,10 @@ void DB::applyIndexUpdate(IndexUpdate *u) {
   REMOVE_ADD(var, declarations);
   for (auto &[usr, p] : u->vars_uses)
     updateUses(usr, Kind::Var, var_usr, vars, p, false);
+
+  if (u->file_id != -1) {
+    files[u->file_id].calls = std::move(u->calls);
+  }
 
 #undef REMOVE_ADD
 }

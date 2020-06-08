@@ -8,6 +8,7 @@
 #include <optional>
 #include <string_view>
 
+#include <cassert>
 #include <iterator>
 #include <memory>
 #include <string>
@@ -151,8 +152,14 @@ template <typename T> struct Vec {
   const T *end() const { return a.get() + s; }
   T *end() { return a.get() + s; }
   int size() const { return s; }
-  const T &operator[](size_t i) const { return a.get()[i]; }
-  T &operator[](size_t i) { return a.get()[i]; }
+  const T &operator[](size_t i) const {
+    assert(i < size());
+    return a.get()[i];
+  }
+  T &operator[](size_t i) {
+    assert(i < size());
+    return a.get()[i];
+  }
 };
 
 /**

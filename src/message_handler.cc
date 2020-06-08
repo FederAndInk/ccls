@@ -95,6 +95,26 @@ struct ScanLineEvent {
     return symbol->id < o.symbol->id;
   }
 };
+
+struct CclsCall {
+  struct Parameter {
+    Position pos;
+    std::string name;
+    bool isLiteral = false;
+    bool isNonConstLValueRef = false;
+  };
+
+  std::vector<Parameter> params;
+};
+REFLECT_STRUCT(CclsCall::Parameter, pos, name, isLiteral, isNonConstLValueRef);
+REFLECT_STRUCT(CclsCall, params);
+
+struct CclsInlineParameterHints {
+  DocumentUri uri;
+  std::vector<CclsCall> calls;
+};
+REFLECT_STRUCT(CclsInlineParameterHints, uri, calls);
+
 } // namespace
 
 void ReplyOnce::notOpened(std::string_view path) {
@@ -468,30 +488,41 @@ void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
 }
 
 void emitInlineParameterHint(DB *db, WorkingFile *wfile, QueryFile &file) {
-  auto sz = file.def->args.size();
-  sz = file.getSymbols().size();
-  for (auto &pair : file.getSymbols()) {
-    ExtentRef const &sym{pair.first};
-    if (sym.kind == Kind::Func && (sym.role & Role::Call)) {
-      auto name = db->getSymbolName(sym, false);
-      auto qual_name = db->getSymbolName(sym, true);
-
-      auto &fct = db->getFunc(sym);
-      auto fct_def = fct.anyDef();
-      auto &param = fct_def->vars;
-      auto &spell = *fct_def->spell;
-      if (param.size() > 0) {
-        auto p1 = db->getVar(param[0]);
-        auto p1_name = p1.anyDef()->name(false);
-        auto p1_qual_name = p1.anyDef()->name(true);
-        auto jk{0};
+  CclsInlineParameterHints res;
+  res.uri = DocumentUri::fromPath(wfile->filename);
+  for (auto &[pos, call] : file.calls) {
+    /// used when there is no more formal parameters (variadic)
+    bool prev_lvalue_indicator{false};
+    if (auto fct_def = db->getFunc(call.usr).anyDef()) {
+      res.calls.emplace_back();
+      CclsCall &c = res.calls.back();
+      int p_no{0};
+      for (auto &&param : call.params) {
+        bool is_non_const_lvalue_ref{prev_lvalue_indicator};
+        std::string name;
+        if (p_no < fct_def->vars.size()) {
+          auto p_def = db->getVar(fct_def->vars[p_no]).anyDef();
+          if (p_def && p_def->kind == SymbolKind::Parameter) {
+            is_non_const_lvalue_ref = p_def->is_non_const_lvalue_ref;
+            name = p_def->name(false);
+          }
+        }
+        prev_lvalue_indicator = is_non_const_lvalue_ref;
+        // not sure how to pass the pos to the client:
+        // SEE: how buffer/index lines works?
+        std::optional<lsRange> rng =
+            getLsRange(wfile, Range{param.pos, param.pos});
+        if (!rng) {
+          continue;
+        }
+        c.params.push_back(CclsCall::Parameter{rng->start, std::move(name),
+                                               param.is_literal,
+                                               is_non_const_lvalue_ref});
+        ++p_no;
       }
-      auto buf_line = wfile->buffer_lines[sym.range.start.line];
-      auto index_line = wfile->index_lines[sym.range.start.line];
-      auto i{0};
     }
   }
-  return;
+  pipeline::notify("$ccls/publishInlineParameterHints", res);
 }
 
 } // namespace ccls

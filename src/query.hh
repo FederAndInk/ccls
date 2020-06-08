@@ -44,6 +44,7 @@ struct QueryFile {
   std::optional<Def> def;
   // `extent` is valid => declaration; invalid => regular reference
   llvm::DenseMap<ExtentRef, int> symbol2refcnt;
+  std::unordered_map<Pos, Call> calls;
 
   void updateSymbolRefCount(ExtentRef const &sym, int delta) {
     int &ref_cnt = symbol2refcnt[sym];
@@ -142,6 +143,9 @@ struct IndexUpdate {
   std::vector<std::pair<Usr, QueryVar::Def>> vars_def_update;
   Update<DeclRef> vars_declarations;
   Update<Use> vars_uses;
+
+  // Calls
+  std::unordered_map<Pos, Call> calls;
 };
 
 struct DenseMapInfoForUsr {

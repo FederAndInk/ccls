@@ -134,6 +134,9 @@ void reflect(BinaryWriter &vis, const char *v       ) { vis.string(v); }
 void reflect(BinaryWriter &vis, std::string const&v       ) { vis.string(v.c_str(), v.size()); }
 // clang-format on
 
+REFLECT_STRUCT(Call::Param, pos, is_literal);
+REFLECT_STRUCT(Call, usr, params);
+
 void reflect(JsonWriter &vis, std::string_view data) {
   if (data.empty())
     vis.string("");
@@ -176,6 +179,40 @@ void reflect(BinaryWriter &vis, std::unordered_map<Usr, V> const &v) {
   vis.varUInt(v.size());
   for (auto &it : v)
     reflect(vis, it.second);
+}
+
+template <typename V>
+void reflect(JsonReader &vis, std::unordered_map<Pos, V> &v) {
+  vis.iterArray([&]() {
+    std::pair<Pos, V> val;
+    reflect(vis, val);
+    v.insert(std::move(val));
+  });
+}
+template <typename V>
+void reflect(JsonWriter &vis, std::unordered_map<Pos, V> const &v) {
+  // Determinism
+  std::vector<std::pair<Pos, V>> xs(v.begin(), v.end());
+  std::sort(xs.begin(), xs.end(),
+            [](const auto &a, const auto &b) { return a.first < b.first; });
+  vis.startArray();
+  for (auto &kv : xs)
+    reflect(vis, kv);
+  vis.endArray();
+}
+template <typename V>
+void reflect(BinaryReader &vis, std::unordered_map<Pos, V> &v) {
+  for (auto n = vis.varUInt(); n; n--) {
+    std::pair<Pos, V> val;
+    reflect(vis, val);
+    v.insert(std::move(val));
+  }
+}
+template <typename V>
+void reflect(BinaryWriter &vis, std::unordered_map<Pos, V> const &v) {
+  vis.varUInt(v.size());
+  for (auto &kv : v)
+    reflect(vis, kv);
 }
 
 // Used by IndexFile::dependencies.
@@ -384,6 +421,7 @@ void reflect1(TVisitor &vis, ConstIfWriter_t<TVisitor, IndexFile> &v) {
   REFLECT_MEMBER(usr2func);
   REFLECT_MEMBER(usr2type);
   REFLECT_MEMBER(usr2var);
+  REFLECT_MEMBER(calls);
   reflectMemberEnd(vis);
 }
 void reflectFile(JsonReader &vis, IndexFile &v) { reflect1(vis, v); }

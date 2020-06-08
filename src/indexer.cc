@@ -198,7 +198,7 @@ Kind getKind(const Decl *d, SymbolKind &kind) {
     kind = SymbolKind::Parameter;
     return Kind::Var;
   case Decl::Var: {
-    auto vd = cast<VarDecl>(d);
+    auto const *vd = cast<VarDecl>(d);
     if (vd->isStaticDataMember()) {
       kind = SymbolKind::Field;
       return Kind::Var;
@@ -420,22 +420,22 @@ public:
 
   CallOrConstructExpr() = default;
 
-  /*explicit(false)*/ CallOrConstructExpr(CallExprVariant expr)
-      : expr(expr) {}
+  /*explicit(false)*/ CallOrConstructExpr(CallExprVariant expr) : expr(expr) {}
 
   /*explicit(false)*/ CallOrConstructExpr(Expr const *exp) {
-    if (auto call_expr = dyn_cast<CallExpr>(exp)) {
+    if (auto const *call_expr = dyn_cast<CallExpr>(exp)) {
       expr = call_expr;
-    } else if (auto cxx_construct_expr = dyn_cast<CXXConstructExpr>(exp)) {
+    } else if (auto const *cxx_construct_expr =
+                   dyn_cast<CXXConstructExpr>(exp)) {
       expr = cxx_construct_expr;
     }
   }
 
   /*explicit(false)*/ CallOrConstructExpr(
       ast_type_traits::DynTypedNode const &node) {
-    if (auto call_expr = node.get<CallExpr>()) {
+    if (auto const *call_expr = node.get<CallExpr>()) {
       expr = call_expr;
-    } else if (auto cxx_construct_expr = node.get<CXXConstructExpr>()) {
+    } else if (auto const *cxx_construct_expr = node.get<CXXConstructExpr>()) {
       expr = cxx_construct_expr;
     }
   }
@@ -476,25 +476,53 @@ public:
         expr);
   }
 
-  Stmt::StmtClass getStmtClass() const noexcept {
-    return visit<Stmt::StmtClass>(
-        [](auto const *exp) { return exp->getStmtClass(); });
+  operator Expr const *() const {
+    return visit<Expr const *>(
+        [](auto const *expr) -> Expr const * { return expr; });
   }
 
-  const_arg_range arguments() const noexcept {
+  const_arg_range arguments() const {
     return visit<const_arg_range>(
         [](auto const *exp) { return exp->arguments(); });
   }
 };
 
-bool isMemberFunctionCall(CallOrConstructExpr const &expr) noexcept {
-  auto stmt_class = expr.getStmtClass();
-  return stmt_class == Stmt::CXXMemberCallExprClass ||
-         stmt_class == Stmt::CXXOperatorCallExprClass;
+/**
+ * @brief tells if expr is a call that has this as an argument
+ *
+ * @param expr
+ * @return true
+ * @return false
+ */
+bool hasThisArg(Expr const *expr) {
+  auto stmt_class = expr->getStmtClass();
+  return stmt_class == Stmt::CXXOperatorCallExprClass;
 }
 
 bool isCall(Expr const *expr) noexcept {
   return CallExpr::classof(expr) || CXXConstructExpr::classof(expr);
+}
+
+/**
+ * @brief tells if expr is an explicit call (with parenthesis or curly not user
+ * def literal nor operator call except operator())
+ *
+ * @param expr
+ * @return true
+ * @return false
+ */
+bool isExplicitCall(Expr const *expr) noexcept {
+  auto stmt_class = expr->getStmtClass();
+  if (stmt_class == Stmt::CallExprClass ||
+      stmt_class == Stmt::CXXMemberCallExprClass ||
+      stmt_class == Stmt::CXXConstructExprClass) {
+    return true;
+  }
+
+  if (stmt_class == Stmt::CXXOperatorCallExprClass) {
+    return cast<CXXOperatorCallExpr>(expr)->getOperator() == OO_Call;
+  }
+  return false;
 }
 
 class IndexDataConsumer : public index::IndexDataConsumer {
@@ -978,16 +1006,21 @@ public:
               .def.callees.push_back({loc, usr, Kind::Func, role});
         Expr const *expr = ast_node.OrigE;
         if (expr) {
-          if (auto call_exp = getParentCallExpr(expr)) {
-            Call &call = db->calls[loc.start];
-            call.usr = usr;
-            for (Expr const *call_exp_param :
-                 drop(isMemberFunctionCall(call_exp), call_exp.arguments())) {
-              Call::Param &call_param = call.params.emplace_back();
-              auto p_loc = call_exp_param->getBeginLoc();
-              call_param.pos.line = sm.getExpansionLineNumber(p_loc) - 1;
-              call_param.pos.column = sm.getExpansionColumnNumber(p_loc) - 1;
-              call_param.is_literal = isLiteral(call_exp_param);
+          auto call_expr = getParentCallExpr(expr);
+          if (call_expr && isExplicitCall(call_expr)) {
+            auto [it, inserted] = db->calls.try_emplace(loc.start);
+            if (inserted) {
+              Call &call = it->second;
+              call.usr = usr;
+              for (Expr const *call_expr_param :
+                   drop(hasThisArg(call_expr), call_expr.arguments())) {
+                Call::Param &call_param = call.params.emplace_back();
+                auto p_loc = call_expr_param->getBeginLoc();
+                // SEE: if this is the correct way to get line col
+                call_param.pos.line = sm.getExpansionLineNumber(p_loc) - 1;
+                call_param.pos.column = sm.getExpansionColumnNumber(p_loc) - 1;
+                call_param.is_literal = isLiteral(call_expr_param);
+              }
             }
           }
         }
@@ -1036,7 +1069,7 @@ public:
           if (canonical_type->isLValueReferenceType()) {
             auto pointee_type =
                 cast<LValueReferenceType>(*canonical_type).getPointeeType();
-            var->def.is_non_const_lvalue_ref = pointee_type.isConstQualified();
+            var->def.is_non_const_lvalue_ref = !pointee_type.isConstQualified();
           }
           if (auto *bt = t->getAs<BuiltinType>()) {
             Usr usr1 = static_cast<Usr>(bt->getKind());
@@ -1374,7 +1407,7 @@ public:
 };
 } // namespace
 
-const int IndexFile::kMajorVersion = 21;
+const int IndexFile::kMajorVersion = 22;
 const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(const std::string &path, const std::string &contents,
