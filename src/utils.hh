@@ -171,12 +171,12 @@ template <typename T> struct Vec {
  * @return auto
  */
 template <typename Range> auto drop(std::size_t n, Range const &rng) {
-  auto begin = rng.begin();
-  auto end = rng.end();
-  while (n > 0 && begin != end) {
-    ++begin;
-    --n;
+  auto begin = std::begin(rng);
+  auto end = std::end(rng);
+  if (n >= std::distance(begin, end)) {
+    return llvm::make_range(end, end);
   }
+  std::advance(begin, n);
   return llvm::make_range(begin, end);
 }
 

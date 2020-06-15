@@ -446,14 +446,6 @@ public:
 
   operator bool() const noexcept { return isValid(); }
 
-  template <typename... Fct> decltype(auto) visit(Fct &&... fct) {
-    return std::visit(
-        overloaded{[](std::monostate) {}, std::forward<Fct>(fct)...}, expr);
-  }
-  template <typename... Fct> decltype(auto) visit(Fct &&... fct) const {
-    return std::visit(
-        overloaded{[](std::monostate) {}, std::forward<Fct>(fct)...}, expr);
-  }
   template <typename T, typename... Fct> decltype(auto) visit(Fct &&... fct) {
     return std::visit(
         overloaded{[](std::monostate) -> T {
@@ -515,11 +507,25 @@ bool isExplicitCall(Expr const *expr) noexcept {
   auto stmt_class = expr->getStmtClass();
   if (stmt_class == Stmt::CallExprClass ||
       stmt_class == Stmt::CXXMemberCallExprClass ||
-      stmt_class == Stmt::CXXConstructExprClass) {
+      stmt_class == Stmt::CXXTemporaryObjectExprClass) {
+    return true;
+  }
+
+  if (stmt_class == Stmt::CXXConstructExprClass) {
+    // checking implicit construct, eg:
+    // void f(std::string s);
+    // f("test");
+    auto const *construct_expr = cast<CXXConstructExpr>(expr);
+    // >= 1 because of default args
+    if (construct_expr->getNumArgs() >= 1) {
+      auto a1 = construct_expr->arg_begin();
+      return construct_expr->getBeginLoc() != (*a1)->getBeginLoc();
+    }
     return true;
   }
 
   if (stmt_class == Stmt::CXXOperatorCallExprClass) {
+    // only operator()
     return cast<CXXOperatorCallExpr>(expr)->getOperator() == OO_Call;
   }
   return false;
