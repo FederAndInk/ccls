@@ -42,7 +42,7 @@ struct Out_cclsMember {
   // undefined. If it is 0, there are no members.
   int numChildren = 0;
 
-  int sizeOfMember = 0;//0 - not provided
+  unsigned sizeOfMember = 0; // 0 - not provided
   // Empty if the |levels| limit is reached.
   std::vector<Out_cclsMember> children;
 };
